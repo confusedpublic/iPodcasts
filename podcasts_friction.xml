@@ -1,0 +1,83 @@
+<rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+<channel>
+<title>
+Friction
+</title>
+<link>http://www.bbc.co.uk/programmes/b01d76m6</link>
+<description>
+The hottest D&amp;B, exclusives and big guests with Friction.
+</description>
+<language>en-gb</language>
+<copyright>BBC © 2015</copyright>
+<lastBuildDate>Tue, 27 Oct 2015 15:40:46 GMT</lastBuildDate>
+<ttl>15</ttl>
+<itunes:owner>
+	<itunes:email>dave.race@gmail.com</itunes:email>
+	<itunes:name>Friction</itunes:name>
+</itunes:owner>
+<itunes:image href="raspberrypi/radio_podcasts/Friction/Friction.AI_and_Playaz_Recordings.jpg"/>
+<itunes:author>BBC Radio 1Xtra</itunes:author>
+<itunes:explicit>no</itunes:explicit>
+<itunes:keywords/>
+<itunes:summary>
+	The hottest D&amp;B, exclusives and big guests with Friction.
+</itunes:summary>
+<image>
+	<title>
+		Friction
+	</title>
+	<url>raspberrypi/radio_podcasts/Friction/Friction.AI_and_Playaz_Recordings.jpg</url>
+	<link>http://www.bbc.co.uk/</link>
+</image>
+<item>
+	<title>
+		Friction: AI and Playaz Recordings
+	</title>
+	<description>
+		Artificial Intelligence are in the mix for Friction, plus the DNB60 comes from Playaz Recordings, courtesy of Potential Badboy.
+	</description>
+	<enclosure url="http://192.168.1.84/radio_podcasts/Friction/Friction.AI_and_Playaz_Recordings.mp3" length="10995" type="audio/mpeg"/>
+	<pubDate>Tue, 27 Oct 2015 00:00:00 GMT</pubDate>
+	<guid>
+		http://192.168.1.84/radio_podcasts/Friction/Friction.AI_and_Playaz_Recordings.mp3
+	</guid>
+	<itunes:duration>03:03:15</itunes:duration>
+	<itunes:author>BBC</itunes:author>
+	<itunes:explicit>no</itunes:explicit>
+	<itunes:keywords>
+		Music,Dance &amp; Electronica,Drum &amp; Bass
+	</itunes:keywords>
+	<itunes:subtitle>
+		Artificial Intelligence are in the mix for Friction, plus Playaz supply the DNB60.
+	</itunes:subtitle>
+	<itunes:summary>
+		Artificial Intelligence are in the mix for Friction, plus Playaz supply the DNB60.
+	</itunes:summary>
+</item>
+<item>
+	<title>
+		Friction: Krakota and Exit&#39;s Module Eight
+	</title>
+	<description>
+		Friction has a guest mix from Krakota and the DNB60&#39;s from Exit Records&#39; Module Eight.
+	</description>
+	<enclosure url="http://192.168.1.84/radio_podcasts/Friction/Friction.Kakota_and_Exits_Module_Eight.mp3" length="10800" type="audio/mpeg"/>
+	<pubDate>Tue, 20 Oct 2015 0:00:00 GMT</pubDate>
+	<guid>
+		http://192.168.1.84/radio_podcasts/Friction/Friction.Kakota_and_Exits_Module_Eight.mp3
+	</guid>
+	<itunes:duration>01:30:00</itunes:duration>
+	<itunes:author>BBC</itunes:author>
+	<itunes:explicit>no</itunes:explicit>
+	<itunes:keywords>
+		Music,Dance &amp; Electronica,Drum &amp; Bass
+	</itunes:keywords>
+	<itunes:subtitle>
+		Friction has a guest mix from Krakota and the DNB60&#39;s from Exit Records&#39; Module Eight.
+	</itunes:subtitle>
+	<itunes:summary>
+		Friction has a guest mix from Krakota and the DNB60&#39;s from Exit Records&#39; Module Eight.
+	</itunes:summary>
+</item>
+</channel>
+</rss>
