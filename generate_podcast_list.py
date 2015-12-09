@@ -1,24 +1,28 @@
-import xml.etree.ElementTree as ET
-import dateutil.parser
+# For xml processing & parsing for BeautifulSoup
+from lxml import etree as ET
+# For getting the length of the mp3
 from subprocess import Popen, PIPE, STDOUT
+# For date related activities
 import datetime
+from dateutil.tz import tzlocal
 import time
+# For Logging
 import logging
+# For checking file exists
+import os
+# For web scraping
+from bs4 import BeautifulSoup
+import urllib2
 
 # Set up logging
 logging.basicConfig(filename="generate_podcast_xml.log", format="%(levelname)s: %(asctime)s: %(message)s", level=logging.DEBUG)
 
 # Import the variables from the other files
-from scan_for_xml import *
-from scan_for_podcasts import *
+import scan_for_xml as XMLs
+import scan_for_podcasts
 
-# Setting this variable for now. Will need to pass the path to it from a script which checks for new .mp3 and .xml files.
-# TO DO: Loop over array
-XML_file = new_podcasts['Friction'][0]['xml']
-
-show_tree = ET.parse(XML_file)
-show_root = show_tree.getroot()
-
+# Needed for the owner's email address in the podcast's xml file.
+EMAIL = 'dave.race@gmail.com'
 
 def get_pub_time(timestring):
 #-------------------------------------------------------------------------#
@@ -50,6 +54,8 @@ def get_pub_time(timestring):
         # Need to add this
         # TO DO: Whatever I'm doing here? Not sure what this else statement was meant to do
         #print len(pub_time_figs)
+    pub_time_tmp = datetime.datetime.strptime(pub_time, "%Y-%m-%dT%H:%M:%S")
+    pub_time = datetime.datetime.strftime(pub_time_tmp, "%a, %d %b %Y %H:%M:%S GMT") # %Z empty, should be GMT. TO DO: FIX
     pub_time_data['pub_time'] = pub_time
     pub_time_data['pub_offset'] = pub_offset
     return pub_time_data
@@ -113,105 +119,318 @@ def get_length(file_path):
 # /end get_length()
 #-------------------------------------------------------------------------#
 
-#def add_new_podcast(new_data, podcast_list):
+def get_desc(page):
+#-------------------------------------------------------------------------#
+# Scrape the BBC website for the show's general description.
+# We look for the following tags:
+# <div class="map__intro__synopsis centi" property="description">
+#   <p> -example desc- </p>
+# </div>
+    file = urllib2.urlopen(page)
+    soup = BeautifulSoup(file, "lxml")
+    desc = soup.find(property='description')
+    return str(desc.string)
+
+# /end get_desc()
+#-------------------------------------------------------------------------#
+
+
+def create_new_podcast(podcast_file, podcast_list):
+#-------------------------------------------------------------------------#
+# This function is called if the podcast does not currently have a
+# podcast xml file. It then creates the xml file with the appropriate
+# general tags.
+#
+# Need to generate the following xml tags from the show data:
+#   <title> - Podcast title taken from the show title
+#   <link> - Link to the show's page on the BBC website
+#   <ns0:owner>
+#       <ns0:name> - Title of the show again    
+#   <ns0:keywords/> - Keywords for searching, if there are any
+#   <copyright> - Copyright for the BBC
+#   <ns0:image href=""/> - Image for the podcast
+#   <ns0:author - Author of the podcast, set to the radiostation it was broadcast from
+#   <image> - Parent tag for image information, set statically.
+#       <title> - Title of the show again
+#       <url> - Image for the podcast, again
+#       <link> - Link to the show's page on the BBC website again
+#
+# And need to create the following xml tags which are static/not dependant 
+# upon the show's xml
+#   <language> - Language the show is in (default set to 'en-gb')
+#   <ttl>15</ttl> - Don't know what this tag is for. Set to a random number for now, 
+#                   will test what changing it does.
+#   <lastBuildDate> - Last time the podcast xml file was generated
+#   <ns0:owner>
+#       <ns0:email> - the email of the podcast xml file - set this as your own email
+#   <ns0:explicit> - Whether the show has explicit content or not (default set to 'no')
+#
+# Unfortunatley, the descriptions in the xml file are specific to the episode. To get 
+# the general description of the show for the following tags, we'll have to do a quick
+# bit of web scraping.
+#   <description> - Description of the show
+#   <ns0:summary> - Summary of the show (same as description)
+# We can find the link to the programme's website from the xml file and plug it into a function
+# to find the information we need to make this code easier to ride & to split tasks.
+
+#
+# The podcast file comes through in the form: "podcasts_" + pod_title.lower() + ".xml"
+# This means we already know where, and with what name to create it.
+# We will need to look up one of the xml files from the downloaded episodes, though,
+# to scrape the general information. The easiest way to do this is to cycle through the 
+# podcast_list dictionary and see if one of the pod_titles is in the podcast_file string
+# then pick the first episode's (i.e. index 0) xml file.
+#
+#
+
+    # Namespace set up
+    pod_ns = "http://www.itunes.com/dtds/podcast-1.0.dtd"
+    pod_ns_tag = "{%s}" % pod_ns
+    pod_ns_key = "ns0"
+    # And generate the namespace map for turning the literal namespace into the key/abbreviation later
+    NSMAP = {pod_ns_key: pod_ns}
+    # Build a list of tags which use the namespaces
+    needs_namespaces = ['owner', 'name', 'email', 'image', 'author', 'explicit', 'summary']
+
+    # ------------------------------
+    # Set up the static tags
+
+    # lastBuildDate requires the current time.
+    # datetime.now() returns an empty value for the local time zone. I found how to produce 
+    # a timeszone from here, http://joelinoff.com/blog/?p=802, using tzlocal()
+    now = datetime.datetime.now(tzlocal())
+    now = datetime.datetime.strftime(now, "%a, %d %b %Y %H:%M:%S %Z")
+
+    new_show = {'explicit': 'no', 'owner': {'email': EMAIL}, 'lastBuildDate': now, 'language': 'en-gb', 'ttl': 10, 'image_p': {}}
+    for pod_title, pod_num in podcast_list.items():
+        # This looks to see if the podcast title is any string in the list
+        if pod_title in podcast_file:
+            # If it is, we only need the first episode's xml file (and there may only be 1 episode anyway)
+            # so grab that and break the loop.
+            new_ep_xml = podcast_list[pod_title][0]['xml']
+            break
+        else:
+            # Utoh, didn't find it. That means there'll be no xml files and something's gone wrong.
+            logging.error("Can't find the podcast " + pod_title + " in the podcast lists.")
+            
+    # Bit of error checking.
+    # Check the variable was assigned, i.e. that the podcast was found in the list
+    if "new_ep_xml" not in locals():
+        logging.error("The podcast wasn't found at all in the podcast lists. Aborting.")
+        exit()
+    # Check the file exists
+    if os.path.isfile(new_ep_xml) == False:
+        logging.error("The first episode .xml file doesn't actually exist. Exited.\nxml file was: " + new_ep_xml)
+        exit()
+
+    # Open the file and get the information out.
+    show_tree = ET.parse(new_ep_xml)
+    show_root = show_tree.getroot()
+    # now loop over it to get the podcast episode's information and put it in a new array
+    for show_data in show_root:
+        # Each .tag value includes the namespace {http://linuxcentre.net/xmlstuff/get_iplayer} before the actual value of the tag.
+        # I used .split('}',1)[-1] to split the string at the first right hand brace, and return what's to the
+        # left of the }. Messy, but it works.
+        if show_data.tag.split('}',1)[-1] == 'brand':
+            new_show['title'] = show_data.text
+            new_show['owner']['name'] = show_data.text
+            new_show['image_p']['title'] = show_data.text
+        elif show_data.tag.split('}',1)[-1] == 'web':
+            new_show['link'] = show_data.text
+            new_show['image_p']['link'] = show_data.text
+            new_show['description'] = get_desc(show_data.text)
+            new_show['summary'] = get_desc(show_data.text)
+        elif show_data.tag.split('}',1)[-1] == 'thumbnail':
+            new_show['image'] = show_data.text
+            new_show['image_p']['url'] = show_data.text
+        elif show_data.tag.split('}',1)[-1] == 'channel':
+            new_show['author'] = show_data.text
+        elif show_data.tag.split('}',1)[-1] == 'categories':
+            new_show['keywords'] = show_data.text
+        elif show_data.tag.split('}',1)[-1] == 'category':
+            new_show['category'] = show_data.text
+        elif show_data.tag.split('}',1)[-1] == 'firstbcast':
+            # Get the first 4 characters of the first published date which is in the format
+            # YYYY-MM-DDTHH:MM:SSz
+            cr_year = show_data.text[:4]
+            new_show['copyright'] = "BBC &#169; " + cr_year
+   
+    # Now make the file:
+    new_xml_file = open(podcast_file, "w")
+    # Close the file
+    new_xml_file.close
+    logging.info("Created the new file: " + podcast_file)
+
+    # Build the xml tree
+    podcast_root = ET.Element("rss", nsmap=NSMAP)
+    podcast_root.attrib['version'] = "2.0"
+    channel = ET.SubElement(podcast_root, "channel")
+
+    for tag, text in new_show.items():
+        if tag in needs_namespaces:
+            # We'll the namespace literal to the tag
+            # Different for the image tag, thoguh, as it has an attribute, not text.
+            ns_tag = pod_ns_tag + tag
+            show_child = ET.SubElement(channel, ns_tag, nsmap=NSMAP)
+            if tag == "image":
+                show_child.attrib['href'] = text
+            elif tag == "owner":
+                for child_tag, child_text in text.items():
+                    ns_tag = pod_ns_tag + child_tag
+                    show_child_child = ET.SubElement(show_child, ns_tag, nsmap=NSMAP)
+                    show_child_child.text = child_text
+            else:
+                show_child.text = text
+        else:
+            if tag == "image_p":
+                show_child = ET.SubElement(channel, "image")
+                for child_tag, child_text in text.items():
+                    show_child_child = ET.SubElement(show_child, child_tag)
+                    show_child_child.text = child_text
+            else:
+                show_child = ET.SubElement(channel, tag)
+                show_child.text = str(text)
+            
+    # And write the xml to the file
+    podcast_tree = ET.ElementTree(podcast_root)
+    with open(podcast_file, "w") as f:
+        logging.info("Adding the new xml to the file: " + podcast_file)
+        podcast_tree.write(f, pretty_print=True)
+
+# /end create_new_podcast()
+#-------------------------------------------------------------------------#
+
+def add_new_episodes(podcast_list):
 #-------------------------------------------------------------------------#
 # This function cycles through the new podcast xml data generated in the 
 # script and appends it to the xml file with the appropriate tags.
 # new_data is the data generated from the show's xml file.
 # podcast_list is the appropriate podcast xml file.
-    
 
+# TO DO:
+# Add line to update "last build" date in xml file, using:
+#   now = datetime.datetime.now(tzlocal())
+#   now = datetime.datetime.strftime(now, "%a, %d %b %Y %H:%M:%S %Z")
+# Add line to atler the podcast image to the new episode's image?
 
-#    else:
-#    	print ep.tag, ep.text
-#for schild in podcast_root:
-#	print schild.tag
-#	for scchild in schild:
-#		for ep in scchild:
-#			print ep.tag, ep.attrib, ep.text
+    # Create the dictionary for the new podcast's tag data
+    new_data = {}
+    # Create the list of new podcasts
+    podcast_xmls = []
 
-# Create the dictionary for the new podcast's tag data
-new_data = {}
-# The enclosure tag will have attributes rather than text values, so we'll put the in an embedded dictionary.
-new_data['enclosure'] = {}
+    for pod_title, pod_num in podcast_list.items():
+        new_data[pod_title] = {}
+        for pod_number, pod_details in pod_num.items():
+            new_data[pod_title][pod_number] = {}
+            # The enclosure tag will have attributes rather than text values, so we'll put the in an embedded dictionary.
+            new_data[pod_title][pod_number]['enclosure'] = {'type': "audio/mpeg"}
+            # get_iplayer's output xml file doesn't seem to have an explicit tag, so we'll set it as no by default
+            new_data[pod_title][pod_number]['explicit'] = "no"
+            # set the variables for the current podcast xml and mp3 file
+            XML_file = podcast_list[pod_title][pod_number]['xml']
+            MP3_file = podcast_list[pod_title][pod_number]['mp3']
+            # open the podcast episode's xml file
+            show_tree = ET.parse(XML_file)
+            show_root = show_tree.getroot()
+            # now loop over it to get the podcast episode's information and put it in a new array
+            for show_data in show_root:
+                # Each .tag value includes the namespace {http://linuxcentre.net/xmlstuff/get_iplayer} before the actual value of the tag.
+                # I used .split('}',1)[-1] to split the string at the first right hand brace, and return what's to the
+                # left of the }. Messy, but it works.
+                if show_data.tag.split('}',1)[-1] == 'filename':
+                    #file_location = show_data.text
+                    file_location = MP3_file
+                    show_data.text = file_location # 'http://192.168.1.84/radio_podcasts/' + file_location.strip('/mnt/Ridcully/Media/Radio/')
+                    new_data[pod_title][pod_number]['guid'] = show_data.text
+                    new_data[pod_title][pod_number]['enclosure']['url'] = show_data.text
+                    # Now we get the length of the file
+                    new_length = get_length(file_location)
+                    new_data[pod_title][pod_number]['enclosure']['duration'] = new_length
+                    # Now convert the length in seconds to the time in hh:mm:ss for the duration tag
+                    new_data[pod_title][pod_number]['duration'] = str(datetime.timedelta(seconds=int(new_length)))
+                elif show_data.tag.split('}',1)[-1] == 'episode':
+                    new_data[pod_title][pod_number]['title'] = show_data.text
+                elif show_data.tag.split('}',1)[-1] == 'desclong':
+                    new_data[pod_title][pod_number]['description'] = show_data.text
+                elif show_data.tag.split('}',1)[-1] == 'descshort':
+                    new_data[pod_title][pod_number]['subtitle'] = show_data.text
+                    new_data[pod_title][pod_number]['summary'] = show_data.text
+                elif show_data.tag.split('}',1)[-1] == 'firstbcast':
+                    # pass the first broadcast date through the date formatting function
+                    new_pub_time = get_pub_time(show_data.text)
+                    # now parse the date
+                    # TO DO: add the UTC offset
+                    new_data[pod_title][pod_number]['pubDate'] = new_pub_time['pub_time']
+                elif show_data.tag.split('}',1)[-1] == 'channel':
+                    new_data[pod_title][pod_number]['author'] = show_data.text
+                elif show_data.tag.split('}',1)[-1] == 'categories':
+                    new_data[pod_title][pod_number]['keywords'] = show_data.text # Might need cleaning up
 
-for show_data in show_root:
-    # For some reason each .tag value includes {http://linuxcentre.net/xmlstuff/get_iplayer} before the actual value of the tag.
-    # Couldn't find out why this is, so I use .split('}',1)[-1] to split the string at the first right hand brace, and return what's to the
-    # left of the }. Messy, but it works.
-    if show_data.tag.split('}',1)[-1] == 'filename':
-        #file_location = show_data.text
-        # TO DO: set to looped value
-        file_location = new_podcasts['Friction'][0]['mp3']
-        new_url = file_location # 'http://192.168.1.84/radio_podcasts/' + file_location.strip('/mnt/Ridcully/Media/Radio/')
-        new_data['guid'] = new_url
-        new_data['enclosure']['url'] = new_url
-        # Now we get the length of the file
-        new_length = get_length(file_location)
-        new_data['enclosure']['duration'] = new_length
-    elif show_data.tag.split('}',1)[-1] == 'episode':
-        new_data['title'] = show_data.text
-    elif show_data.tag.split('}',1)[-1] == 'desclong':
-        new_data['description'] = show_data.text
-    elif show_data.tag.split('}',1)[-1] == 'descshort':
-        new_data['subtitle'] = show_data.text
-        new_data['summary'] = show_data.text
-    elif show_data.tag.split('}',1)[-1] == 'firstbcast':
-        # pass the first broadcast date through the date formatting function
-        new_pub_time = get_pub_time(show_data.text)
-        # now parse the date
-        # TO DO: add the UTC offset
-        new_data['pubDate'] = dateutil.parser.parse(new_pub_time['pub_time'])
-    elif show_data.tag.split('}',1)[-1] == 'channel':
-        new_data['author'] = show_data.text
-    elif show_data.tag.split('}',1)[-1] == 'categories':
-        new_data['keywords'] = show_data.text # Might need cleaning up
-#    elif show_data.tag.split('}',1)[-1] == '':
-#        new_data['explicit'] = 
+    # Create a list of the XML files for each podcast
+    for pod_title, pod_nums in podcast_list.items():
+        podcast_xmls.append("podcasts_" + pod_title + ".xml")
+    # Check that these files exist, and if not (i.e. we have a new podcast), call the create_new_podcast() function
+    # to make the XML file.
+    for xml_file in podcast_xmls:
+        if os.path.isfile(xml_file) == False:
+            create_new_podcast(xml_file, podcast_list)
 
-#for keys,values in new_data.items():
-#    print keys + ": => " + str(values)
+    # To print the XML with proper indentation, need to remove the whitespace first,
+    # as outlined in the accepted answere here: http://stackoverflow.com/questions/7903759/pretty-print-in-lxml-is-failing-when-i-add-tags-to-a-parsed-tree
+    for podcasts in podcast_xmls:
+        podcast = podcasts[9:-4]
+        logging.info("Opening the " + podcasts + " file for xml parsing")
+        parser = ET.XMLParser(remove_blank_text=True)
+        podcast_tree = ET.parse(podcasts, parser)
+        podcast_root = podcast_tree.getroot()
 
-# Open the xml file for each podcast and add the new tags to it
-for pod_title,pod_nums in new_podcasts.items():
-    #print pod_title # Title of the podcast
-    # Just setting the variable for now; will do in a loop later
-    podcast_list = "podcasts_" + pod_title + ".xml"
-    #for pod_num,pod_details in pod_nums.items():
-        #print pod_num # Number of new podcasts
-    #    for f_type,pod_f_path in pod_details.items():
-            # info on the podcast: .xml and .mp3 file paths
-            #print "\t" + f_type + ": => " + pod_f_path
+        # Get the xml namespace from the current file
+        podcast_ns = podcast_root.nsmap
+        for abbrv, uri in podcast_ns.items():
+            pod_ns_key = abbrv
+            pod_ns = uri
+        # Now format it for later; the namespace has to be in the {uri} form
+        pod_ns_tag = "{%s}" % pod_ns
+        # And generate the namespace map for turning the literal namespace into the key/abbreviation later
+        NSMAP = {pod_ns_key: pod_ns}
+        # The iTunes podcast xml file has namespaces for the tags held in the namespace list below.
+        needs_namespaces = ['duration', 'author', 'explicit', 'keywords', 'subtitle', 'summary']
 
-#podcast_list = new_podcasts['Friction'][0]['mp3']
-podcast_tree = ET.parse(podcast_list)
-podcast_root = podcast_tree.getroot()
-for podcast_chan in podcast_root:
-    # Each podcast episode's info is held within the item tag, which is a child at this level.
-    # i.e. the item tag is a subelement of the channel element.
-    # We can append a new episode within a new item tag at this stage.
-    child = ET.Element('item')
-    child.attrib['test'] = "value"
-    podcast_root.append(child)
-    #for podcast_info in podcast_chan:
-    #    if podcast_info.tag == "item":
-    #        for podcast_ep_info in podcast_info:
-    #            print(podcast_ep_info.tag, podcast_ep_info.text)
+        for elm in podcast_tree.iterfind('channel'):
+            # Each podcast episode's info is held within the item tag, which is a child of the channel tag.
+            # channel is the elm of this loop, which lets us append a new item tag as a child of elm.
+            # We can then run through each part of the show_data dictionary to add the tags for the new episode
+            for num, new_xml in new_data[podcast].items():
+                item = ET.SubElement(elm, 'item')
+                for tag, text in new_xml.items():
+                    if tag == "enclosure":
+                        show_child = ET.SubElement(item, tag)
+                        for att, val in text.items():
+                            show_child.attrib[att] = val
+                    elif tag in needs_namespaces:
+                        # Add the namespace literal to the tag
+                        ns_tag = pod_ns_tag + tag
+                        show_child = ET.SubElement(item, ns_tag, nsmap=NSMAP)
+                        show_child.text = text
+                    else:
+                        show_child = ET.SubElement(item, tag)
+                        show_child.text = text
+                        
+        # Write the xml tree to the file
+        podcast_tree = ET.ElementTree(podcast_root)
+        with open(podcasts, "w") as f:
+            logging.info("Opened " + podcasts + " to write xml")
+            podcast_tree.write(f, pretty_print=True)
 
-#pod_item.append((Element.fromstring('<item type="test">Value</item>')))
+    # Now that we've added the data for each new podcast, we need to create a .ignore file
+    # for each podcast. This is simple & straight forward.
+    for pod_title, pod_num in podcast_list.items():
+        for pod_number, pod_details in pod_num.items():
+            ignore_file_path = pod_details['xml'][:-4] + ".ignore"
+            ignore_file = open(ignore_file_path, "w")
+            ignore_file.close
 
-'''
-for tag,data in new_data.items():
-    if tag == 'enclosure':
-        child = ET.SubElement(item,tag)
-        child.set('url', data['url'], 'length', data['length'])
-    else:
-        child = ET.SubElement(item,tag)
-        child.text = data
-    #for ep in podcast_root[0]:
-    #    if ep.tag == 'item':
-    #        print "These are the podcast's details:\n"
-    #        for ep_details in ep:           
-    #            print ep_details.tag, ep_details.text
-#    return true
-'''
+# /end add_new_episodes()
+#-------------------------------------------------------------------------#
+
+add_new_episodes(XMLs.new_podcasts)
