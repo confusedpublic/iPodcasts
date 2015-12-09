@@ -415,6 +415,14 @@ def add_new_episodes(podcast_list):
                     else:
                         show_child = ET.SubElement(item, tag)
                         show_child.text = text
+        
+        # Now that we've finished adding the episode, alter the last build date of the xml file to now()
+        now = datetime.datetime.now(tzlocal())
+        now = datetime.datetime.strftime(now, "%a, %d %b %Y %H:%M:%S %Z")       
+        for elm in podcast_tree.find('channel'):
+            if elm.tag == "lastBuildDate":
+                elm.text = str(now)
+        logging.info("Updated the lastBuildDate tag to now: " + now)
                         
         # Write the xml tree to the file
         podcast_tree = ET.ElementTree(podcast_root)
