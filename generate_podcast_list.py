@@ -13,6 +13,8 @@ import os
 # For web scraping
 from bs4 import BeautifulSoup
 import urllib2
+# For parsing and altering the settings file
+import json
 
 # Set up logging
 logging.basicConfig(filename="generate_podcast_xml.log", format="%(levelname)s: %(asctime)s: %(message)s", level=logging.DEBUG)
@@ -437,8 +439,34 @@ def add_new_episodes(podcast_list):
             ignore_file_path = pod_details['xml'][:-4] + ".ignore"
             ignore_file = open(ignore_file_path, "w")
             ignore_file.close
+            
+    # Finally, update the scan time in the settings.conf file:
+    update_scan_time()
 
 # /end add_new_episodes()
+#-------------------------------------------------------------------------#
+
+def update_scan_time():
+#-------------------------------------------------------------------------#
+# This function opens the setting file and updates the last scan time to
+# now.
+
+    now = datetime.datetime.now()
+    now = datetime.datetime.strftime(now, "%Y:%m:%d:%H:%M:%S")
+    
+    # Open the current settings file and alter the last_scan to now in the dictionary we get from the file
+    with open('settings.conf', 'r+') as f:
+        settings_data = json.load(f)
+        settings_data[1]['last_scan'] = now
+    
+    # Copy the old settings file to a backup:
+    os.rename('settings.conf', 'settings.conf~')
+
+    # Write the json to a new settings file:
+    with open('settings.conf', 'w') as f:
+        json.dump(settings_data, f, sort_keys=True, indent=4)    
+
+# /end update_scan_time()
 #-------------------------------------------------------------------------#
 
 add_new_episodes(XMLs.new_podcasts)

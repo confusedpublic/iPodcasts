@@ -17,6 +17,7 @@
 
 import os
 import logging
+import json
 
 def gen_podcast_array(new_podcasts, podcast_title, thisDir, filename):
 #-------------------------------------------------------------------------#
@@ -47,30 +48,24 @@ def gen_podcast_array(new_podcasts, podcast_title, thisDir, filename):
 # /end add_new_episodes()
 #-------------------------------------------------------------------------#
 
-# Check for the configuration file
-config = open('config', 'r')
-lines = config.readlines()
-settings = {}
-podcast_dir = ''
 new_podcasts = {}
 ep_num = 0
 
-for line in lines:
-    if "podcast_dir" in line:
-        setting = line.split(' ',1)
-        podcast_dir = setting[1][1:-2] # Need to trim the \n and the " " marks from the path
+with open('settings.conf', 'r+') as f:
+    json_data = json.load(f)
+settings = json_data[0]
 
 # Just a quick check before going any further that the directory has been set
-if not podcast_dir:
+if not settings['podcast_dir']:
     logging.error("No podcast directory given. Please set this in the config file.")
     exit()
     
 # Now check whether it actually exists!
-if not os.path.isdir(podcast_dir):
+if not os.path.isdir(settings['podcast_dir']):
     logging.error("The podcast directory set in the config file does not exist. Please set this to an existing directory.")
     
 # Now lets walk through the podcast directory and find all the .xml and .ignore files
-for (thisDir, subdirs_found, files_found) in os.walk(podcast_dir):
+for (thisDir, subdirs_found, files_found) in os.walk(settings['podcast_dir']):
     for filename in files_found:
         # Check for the .xml file, and that we're not ignoring it for whatever reason
         if filename.endswith('.xml') & os.path.isfile(thisDir + "/" + filename.replace('.xml','.ignore')):
@@ -83,7 +78,7 @@ for (thisDir, subdirs_found, files_found) in os.walk(podcast_dir):
         elif filename.endswith('.xml') & ("podcast" not in filename):
             # Found a new xml file, better check the corresponding mp3 file exists
             if os.path.isfile(thisDir + "/" + filename.replace('.xml','.mp3')):
-                podcast_title = thisDir.replace(podcast_dir + "/",'')
+                podcast_title = thisDir.replace(settings['podcast_dir'] + "/",'')
                 logging.info("The .mp3 and .xml for the new podcast episode for " + podcast_title + " both exist, continuing ...")
                 gen_podcast_array(new_podcasts, podcast_title, thisDir, filename)
             else:
