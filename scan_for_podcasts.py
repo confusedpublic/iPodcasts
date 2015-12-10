@@ -14,33 +14,25 @@
 import datetime
 import time
 import os
+import json
+import logging
 
 # Check for the configuration file
-if not os.path.exists('config'):
-    print "The config file doesn't exist. Please create it!"
+if not os.path.exists('settings.conf'):
+    logging.error("The config file doesn't exist. Please create it!")
     exit()
-config = open('config', 'r')
-lines = config.readlines()
-settings = {}
-for line in lines:
-    setting = line.split(' ')
-    settings[setting[0]] = setting[1][:-1] #remove \n from end of line
 
-# Check the last time we did a scan
-gen_data = open('gen_data', 'r')
-lines = gen_data.readlines()
-data = {}
-last_scan = ''
-for line in lines:
-    datum = line.split(' ') 
-    data[datum[0]] = datum[1][:-1] #remove \n from end of line
+with open('settings.conf', 'r+') as f:
+    settings_data = json.load(f)
+settings = settings_data[0]
+last_scan = settings_data[1]['last_scan']
 
-# data[last_scan] is the time we last did a scan in the YYYY:MM:DD:HH:MM:SS format
+# last_scan is the time we last did a scan in the YYYY:MM:DD:HH:MM:SS format
 # so now we just need to see if the time now is >= to data[last_scan] + 
 # settings[scan_interval]
 
 now = datetime.datetime.now()
-last_scan_time = datetime.datetime.strptime(data['last_scan'],"%Y:%m:%d:%H:%M:%S")
+last_scan_time = datetime.datetime.strptime(last_scan, "%Y:%m:%d:%H:%M:%S")
 difference = (now - last_scan_time).total_seconds()
 
 # Convert the interval into seconds (we now it is in minutes)
