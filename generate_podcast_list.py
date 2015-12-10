@@ -306,6 +306,71 @@ def create_new_podcast(podcast_file, podcast_list):
 # /end create_new_podcast()
 #-------------------------------------------------------------------------#
 
+def gen_webpage():
+#-------------------------------------------------------------------------#
+# Generate & update the webpage for subscription links for iTunes podcasts
+    
+    podcast_feed_links = {}
+
+    # Find the podcast feeds directory from the settings file
+    with open('settings.conf', 'r+') as f:
+        json_data = json.load(f)
+    # Make sure the data is clean: add a / if needed:
+    if json_data[0]['podcast_feed_dir'].endswith("/"):
+        podcast_feed_dir = json_data[0]['podcast_feed_dir']
+    else:
+        podcast_feed_dir = json_data[0]['podcast_feed_dir'] + "/"
+        
+    # Open the directory and walk through all the xml files:
+    for (thisDir, subdirs_found, files_found) in os.walk(podcast_feed_dir):
+        for filename in files_found:
+            if ".xml" in filename: # Just to be sure we're only grabbing xml files
+                podcast_feed_links[filename[:-4]] = 'itms://192.168.1.84/radio_podcasts/' + filename
+    
+    # Make the file if it doesn't exist:
+    html_file = podcast_feed_dir + 'index.html'
+    if not os.path.exists(html_file):
+        new_html_file = open(html_file, "w") 
+        # Close the file
+        new_html_file.close
+        logging.info("Created the new html file: " + html_file)
+
+        # Build the html document
+        html_root = ET.Element("html")
+        html_head = ET.SubElement(html_root, "head")
+        title = ET.SubElement(html_head, "title")
+        title.text = "iTunes Podcast Feeds"
+        html_body = ET.SubElement(html_root, "body")
+        for pod_title, file in podcast_feed_links.items():
+            html_p = ET.SubElement(html_body, "p")
+            feed_link = ET.SubElement(html_p, "a")
+            feed_link.attrib['href'] = file
+            feed_link.text = "Subscribe to " + pod_title + " podcast in iTunes"
+        
+        html_tree = ET.ElementTree(html_root)
+        with open(html_file, "w") as f:
+            logging.info("Opened " + html_file + " to write html")
+            html_tree.write(f, pretty_print=True)
+    else:
+        logging.info("Opening the " + html_file + " file for xml parsing")
+        parser = ET.XMLParser(remove_blank_text=True)
+        html_tree = ET.parse(html_file, parser)
+        html_root = podcast_tree.getroot()
+        
+        for links in html_tree.iterfind('a'):
+            if links.attrib[href] not in podcast_feed_links.values():
+                feed_link = ET.SubElement("p", "a")
+                feed_link.attrib['href'] = file
+                feed_link.text = "Subscribe to " + pod_title + " podcast in iTunes"
+        html_tree = ET.ElementTree(html_root)
+        with open(html_file, "w") as f:
+            logging.info("Opened " + html_file + " to write html")
+            html_tree.write(f, pretty_print=True)
+
+
+# /end gen_webpage()
+#-------------------------------------------------------------------------#
+
 def add_new_episodes(podcast_list):
 #-------------------------------------------------------------------------#
 # This function cycles through the new podcast xml data generated in the 
@@ -460,3 +525,5 @@ def add_new_episodes(podcast_list):
 #-------------------------------------------------------------------------#
 
 add_new_episodes(XMLs.new_podcasts)
+
+gen_webpage()
