@@ -16,8 +16,12 @@ import urllib2
 # For parsing and altering the settings file
 import json
 
+# Get the log directory from the settings file:
+with open('settings.conf', 'r+') as f:
+    json_data = json.load(f)
+log_file = json_data[0]['log_file']
 # Set up logging
-logging.basicConfig(filename="generate_podcast_xml.log", format="%(levelname)s: %(asctime)s: %(message)s", level=logging.DEBUG)
+logging.basicConfig(filename=log_file, format="%(levelname)s: %(asctime)s: %(message)s", level=logging.DEBUG)
 
 # Import the variables from the other files
 import scan_for_xml as XMLs
@@ -188,7 +192,7 @@ def create_new_podcast(podcast_file, podcast_list):
     # Namespace set up
     pod_ns = "http://www.itunes.com/dtds/podcast-1.0.dtd"
     pod_ns_tag = "{%s}" % pod_ns
-    pod_ns_key = "ns0"
+    pod_ns_key = "itunes"
     # And generate the namespace map for turning the literal namespace into the key/abbreviation later
     NSMAP = {pod_ns_key: pod_ns}
     # Build a list of tags which use the namespaces
@@ -310,15 +314,27 @@ def add_new_episodes(podcast_list):
 # podcast_list is the appropriate podcast xml file.
 
 # TO DO:
-# Add line to update "last build" date in xml file, using:
-#   now = datetime.datetime.now(tzlocal())
-#   now = datetime.datetime.strftime(now, "%a, %d %b %Y %H:%M:%S %Z")
 # Add line to atler the podcast image to the new episode's image?
 
     # Create the dictionary for the new podcast's tag data
     new_data = {}
     # Create the list of new podcasts
     podcast_xmls = []
+    
+    # Get the podcast xml directory (i.e. where on the server the subscript feed files) are held
+    # and the podcast directory (i.e. where the podcast files are held):
+    with open('settings.conf', 'r+') as f:
+        json_data = json.load(f)
+    # Make sure the data is clean: add a / if needed:
+    if json_data[0]['podcast_feed_dir'].endswith("/"):
+        podcast_feed_dir = json_data[0]['podcast_feed_dir']
+    else:
+        podcast_feed_dir = json_data[0]['podcast_feed_dir'] + "/"
+    # Make sure the data is clean: add a / if needed:
+    if json_data[0]['podcast_feed_dir'].endswith("/"):
+        podcast_dir = json_data[0]['podcast_dir']
+    else:
+        podcast_dir = json_data[0]['podcast_dir'] + "/"
 
     for pod_title, pod_num in podcast_list.items():
         new_data[pod_title] = {}
@@ -340,13 +356,11 @@ def add_new_episodes(podcast_list):
                 # I used .split('}',1)[-1] to split the string at the first right hand brace, and return what's to the
                 # left of the }. Messy, but it works.
                 if show_data.tag.split('}',1)[-1] == 'filename':
-                    #file_location = show_data.text
-                    file_location = MP3_file
-                    show_data.text = file_location # 'http://192.168.1.84/radio_podcasts/' + file_location.strip('/mnt/Ridcully/Media/Radio/')
+                    show_data.text = 'http://192.168.1.84/radio_podcasts/' + MP3_file.strip(podcast_dir)
                     new_data[pod_title][pod_number]['guid'] = show_data.text
                     new_data[pod_title][pod_number]['enclosure']['url'] = show_data.text
                     # Now we get the length of the file
-                    new_length = get_length(file_location)
+                    new_length = get_length(MP3_file)
                     new_data[pod_title][pod_number]['enclosure']['duration'] = new_length
                     # Now convert the length in seconds to the time in hh:mm:ss for the duration tag
                     new_data[pod_title][pod_number]['duration'] = str(datetime.timedelta(seconds=int(new_length)))
@@ -370,7 +384,7 @@ def add_new_episodes(podcast_list):
 
     # Create a list of the XML files for each podcast
     for pod_title, pod_nums in podcast_list.items():
-        podcast_xmls.append("podcasts_" + pod_title + ".xml")
+        podcast_xmls.append(podcast_feed_dir + "podcasts_" + pod_title + ".xml")
     # Check that these files exist, and if not (i.e. we have a new podcast), call the create_new_podcast() function
     # to make the XML file.
     for xml_file in podcast_xmls:
@@ -380,7 +394,7 @@ def add_new_episodes(podcast_list):
     # To print the XML with proper indentation, need to remove the whitespace first,
     # as outlined in the accepted answere here: http://stackoverflow.com/questions/7903759/pretty-print-in-lxml-is-failing-when-i-add-tags-to-a-parsed-tree
     for podcasts in podcast_xmls:
-        podcast = podcasts[9:-4]
+        podcast = podcasts.split("podcasts_")[1][:-4]
         logging.info("Opening the " + podcasts + " file for xml parsing")
         parser = ET.XMLParser(remove_blank_text=True)
         podcast_tree = ET.parse(podcasts, parser)
@@ -440,33 +454,9 @@ def add_new_episodes(podcast_list):
             ignore_file = open(ignore_file_path, "w")
             ignore_file.close
             
-    # Finally, update the scan time in the settings.conf file:
-    update_scan_time()
+    logging.info("Finished adding new podcast episodes")
 
 # /end add_new_episodes()
-#-------------------------------------------------------------------------#
-
-def update_scan_time():
-#-------------------------------------------------------------------------#
-# This function opens the setting file and updates the last scan time to
-# now.
-
-    now = datetime.datetime.now()
-    now = datetime.datetime.strftime(now, "%Y:%m:%d:%H:%M:%S")
-    
-    # Open the current settings file and alter the last_scan to now in the dictionary we get from the file
-    with open('settings.conf', 'r+') as f:
-        settings_data = json.load(f)
-        settings_data[1]['last_scan'] = now
-    
-    # Copy the old settings file to a backup:
-    os.rename('settings.conf', 'settings.conf~')
-
-    # Write the json to a new settings file:
-    with open('settings.conf', 'w') as f:
-        json.dump(settings_data, f, sort_keys=True, indent=4)    
-
-# /end update_scan_time()
 #-------------------------------------------------------------------------#
 
 add_new_episodes(XMLs.new_podcasts)
