@@ -325,7 +325,7 @@ def gen_webpage():
     for (thisDir, subdirs_found, files_found) in os.walk(podcast_feed_dir):
         for filename in files_found:
             if ".xml" in filename: # Just to be sure we're only grabbing xml files
-                podcast_feed_links[filename[:-4]] = 'itms://192.168.1.84/podcasts/' + filename
+                podcast_feed_links[filename[:-4]] = 'pcast://192.168.1.84/podcasts/' + filename
     
     # Make the file if it doesn't exist:
     html_file = podcast_feed_dir + 'index.html'
