@@ -15,17 +15,19 @@ from bs4 import BeautifulSoup
 import urllib2
 # For parsing and altering the settings file
 import json
+# For scheduling the scan
+import threading
+# For loggin the traceback errors, if any, from the scheduling via threading
+import traceback
 
+"""
 # Get the log directory from the settings file:
 with open('settings.conf', 'r+') as f:
     json_data = json.load(f)
 log_file = json_data[0]['log_file']
 # Set up logging
 logging.basicConfig(filename=log_file, format="%(levelname)s: %(asctime)s: %(message)s", level=logging.DEBUG)
-
-# Import the variables from the other files
-import scan_for_xml as XMLs
-import scan_for_podcasts as SCAN
+"""
 
 # Needed for the owner's email address in the podcast's xml file.
 EMAIL = 'dave.race@gmail.com'
@@ -306,20 +308,11 @@ def create_new_podcast(podcast_file, podcast_list):
 # /end create_new_podcast()
 #-------------------------------------------------------------------------#
 
-def gen_webpage():
+def gen_webpage(podcast_feed_dir):
 #-------------------------------------------------------------------------#
 # Generate & update the webpage for subscription links for iTunes podcasts
     
     podcast_feed_links = {}
-
-    # Find the podcast feeds directory from the settings file
-    with open('settings.conf', 'r+') as f:
-        json_data = json.load(f)
-    # Make sure the data is clean: add a / if needed:
-    if json_data[0]['podcast_feed_dir'].endswith("/"):
-        podcast_feed_dir = json_data[0]['podcast_feed_dir']
-    else:
-        podcast_feed_dir = json_data[0]['podcast_feed_dir'] + "/"
         
     # Open the directory and walk through all the xml files:
     for (thisDir, subdirs_found, files_found) in os.walk(podcast_feed_dir):
@@ -355,7 +348,7 @@ def gen_webpage():
         logging.info("Opening the " + html_file + " file for xml parsing")
         parser = ET.XMLParser(remove_blank_text=True)
         html_tree = ET.parse(html_file, parser)
-        html_root = podcast_tree.getroot()
+        html_root = html_tree.getroot()
         
         for links in html_tree.iterfind('a'):
             if links.attrib[href] not in podcast_feed_links.values():
@@ -371,7 +364,7 @@ def gen_webpage():
 # /end gen_webpage()
 #-------------------------------------------------------------------------#
 
-def add_new_episodes(podcast_list):
+def add_new_episodes(podcast_list, podcast_dir, podcast_feed_dir):
 #-------------------------------------------------------------------------#
 # This function cycles through the new podcast xml data generated in the 
 # script and appends it to the xml file with the appropriate tags.
@@ -385,21 +378,6 @@ def add_new_episodes(podcast_list):
     new_data = {}
     # Create the list of new podcasts
     podcast_xmls = []
-    
-    # Get the podcast xml directory (i.e. where on the server the subscript feed files) are held
-    # and the podcast directory (i.e. where the podcast files are held):
-    with open('settings.conf', 'r+') as f:
-        json_data = json.load(f)
-    # Make sure the data is clean: add a / if needed:
-    if json_data[0]['podcast_feed_dir'].endswith("/"):
-        podcast_feed_dir = json_data[0]['podcast_feed_dir']
-    else:
-        podcast_feed_dir = json_data[0]['podcast_feed_dir'] + "/"
-    # Make sure the data is clean: add a / if needed:
-    if json_data[0]['podcast_feed_dir'].endswith("/"):
-        podcast_dir = json_data[0]['podcast_dir']
-    else:
-        podcast_dir = json_data[0]['podcast_dir'] + "/"
 
     for pod_title, pod_num in podcast_list.items():
         new_data[pod_title] = {}
@@ -520,10 +498,13 @@ def add_new_episodes(podcast_list):
             ignore_file.close
             
     logging.info("Finished adding new podcast episodes")
+    
+    logging.info("Now generating the new webpage...")
+    
+    gen_webpage(podcast_feed_dir)
 
 # /end add_new_episodes()
 #-------------------------------------------------------------------------#
 
-add_new_episodes(XMLs.new_podcasts)
-
-gen_webpage()
+if __name__ == "__main__":
+    add_new_episodes()
