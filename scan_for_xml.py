@@ -92,7 +92,7 @@ def podcast_walk(directory):
                 continue
             
             # Check for the .xml file
-            if filename.endswith('.xml') and (filename[:-4] not in to_ignore):
+            if filename.endswith('.xml') and (filename.rsplit('.',1)[0] not in to_ignore):
                 # Make sure there's a trailing /
                 if directory.endswith("/"):
                     podcast_dir = directory
