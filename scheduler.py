@@ -4,6 +4,8 @@ import threading
 import traceback
 import logging
 
+logger = logging.getLogger("iPodcasts." + __name__)
+
 class Scheduler(threading.Thread):
     def __init__(self, action, cycleTime=datetime.timedelta(minutes=10),
                  threadName="ScheduledThread", silent=True):
@@ -26,10 +28,10 @@ class Scheduler(threading.Thread):
         :return: timedelta
         """
         if self.isAlive():
-            logging.info("Is Alive")
+            logger.info("Is Alive")
             return self.cycleTime - (datetime.datetime.now() - self.lastRun)
         else:
-            logging.info("Not Alive")
+            logger.info("Not Alive")
             return datetime.timedelta(seconds=0)
             
     def forceRun(self):
@@ -54,10 +56,10 @@ class Scheduler(threading.Thread):
                 if should_run:
                     self.lastRun = current_time
                     #if not self.silent:
-                    logging.info("Starting new thread: " + self.name)
+                    logger.info("Starting new thread: " + self.name)
                     self.action.run(self.force)
                 else:
-                    logging.debug("Not starting new thread: " + self.name)
+                    logger.debug("Not starting new thread: " + self.name)
 
                 if self.force:
                     self.force = False
@@ -66,5 +68,5 @@ class Scheduler(threading.Thread):
             # exiting thread
             self.stop.clear()
         except:
-            logging.exception("Got an exception:")
+            logger.exception("Got an exception:")
             raise

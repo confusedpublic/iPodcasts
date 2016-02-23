@@ -9,6 +9,7 @@ import json
 import os
 # For logging
 import logging
+import logging.handlers
 # For scheduling the scan
 import threading
 # Import scheduler.py to run the scheduling of the scan
@@ -35,16 +36,22 @@ settings = json_data[0]
 # Set up logging
 log_file = settings['log_file']
 log_level = logging.getLevelName(settings['log_level'])
-logging.basicConfig(filename=log_file, format="%(levelname)s: %(asctime)s: %(message)s", level=log_level)
+log_format = logging.Formatter('%(name)s: %(levelname)s %(asctime)s: %(message)s')
+# Rotate the logs every week, keep 4 weeks of logs (as they shouldn't be too big)
+log_handler = logging.handlers.TimedRotatingFileHandler(log_file, when="D", interval=7, backupCount=4)
+log_handler.setFormatter(log_format)
+logger = logging.getLogger("iPodcasts")
+logger.addHandler(log_handler)
+logger.setLevel(log_level)
 
 # Just a quick check before going any further that the podcast directory has been set
 if not settings['podcast_dir']:
-    logging.error("No podcast directory given. Please set this in the config file.")
+    logger.error("No podcast directory given. Please set this in the config file.")
     exit()
 
 # Now check whether the podcast directory actually exists!
 if not os.path.isdir(settings['podcast_dir']):
-    logging.error("The podcast directory set in the config file does not exist. Please set this to an existing directory.")
+    logger.error("The podcast directory set in the config file does not exist. Please set this to an existing directory.")
 
 # Make sure the podcast directory is clean; add a / if needed:
 if json_data[0]['podcast_dir'].endswith("/"):
@@ -78,22 +85,25 @@ class iPodcasts():
         self.amActive = True
         _ = force
     
-        logging.info("Initialising iPodcast scan")
+        logger.info("Initialising iPodcast scan")
 
         # Generate the list of new podcasts & their XML files
         XMLs.podcast_walk(podcast_dir)
         
         # Push the new podcast list to the log if it contains anything...
         if XMLs.new_podcasts:
-            logging.debug(XMLs.new_podcasts)
-            # and an empty line or two for padding & readability
-            logging.debug("\n\n\n")
+            # Add an empty line for padding & readability
+            logger.debug("\nThe new podcasts are:")
+            logger.debug(XMLs.new_podcasts)
             # And now generate the Podcast feeds
             GENERATE.add_new_episodes(XMLs.new_podcasts, podcast_dir, podcast_feed_dir)
-            logging.info("Scan complete")
+            logger.info("Scan complete")
+            
+            # Make sure to reset the new_podcasts list to an empty dictionary, otherwise it will use
+            # the previous values from the last run
+            XMLs.new_podcasts = {}
         else:
-            logging.info("No new podcasts found")
-        # N
+            logger.info("No new podcasts found")
         
         self.amActive = False
 
