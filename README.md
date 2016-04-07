@@ -1,4 +1,4 @@
-# Podcast_XML
+# iPodcasts
 
 Author: Dave Race
 
