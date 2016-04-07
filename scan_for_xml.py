@@ -77,10 +77,10 @@ def podcast_walk(directory):
                 if ("/" in thisDir.replace(directory,'')) and ("Season_" not in thisDir.replace(directory,'')):
                     # Okay, is a radio show, so add this to the filename to ignore:
                     to_ignore.append(thisDir.replace(directory,'').split('/', 1)[1] + "/" + filename[:-4])
-                    logger.info("There's a file " + thisDir.replace(directory,'').split('/', 1)[1] + "/" + filename[:-4] + ", but we're ignoring it")
+                    logger.debug("There's a file " + thisDir.replace(directory,'').split('/', 1)[1] + "/" + filename[:-4] + ", but we're ignoring it")
                 else:
                     to_ignore.append(filename[:-4])
-                    logger.info("There's a file " + filename[:-4] + ", but we're ignoring it")
+                    logger.debug("There's a file " + filename[:-4] + ", but we're ignoring it")
                 # Move to the next item
                 continue
             # Now check if there's an .mp3 file without an .xml file
@@ -104,7 +104,7 @@ def podcast_walk(directory):
                 # Add the show ...
                 if filename.rsplit('.',1)[0] not in to_ignore:
                     to_ignore.append(filename.rsplit('.',1)[0])
-                logger.info("The file, " + filename + ", is not of a type we want, ignoring it")
+                logger.debug("The file, " + filename + ", is not of a type we want, ignoring it")
                 # Move to the next item
                 continue
             
@@ -148,6 +148,11 @@ def podcast_walk(directory):
                 logger.info("The .mp3 and .xml for the new podcast episode for " + filename[:-4] + " both exist, continuing ...")
                 gen_podcast_array(new_podcasts, podcast_title, thisDir, filename)
             # Else: it's some other type of file, so move on
+            
+    # If there are any episodes to ignore, log that to INFO.
+    # Note: ignored files are logged to DEBUG
+    if to_ignore:
+        logger.info("Some files were ignored. Set log level to DEBUG for more information on which files were ignored.")
 
 if __name__ == "__main__":
     podcast_walk()
