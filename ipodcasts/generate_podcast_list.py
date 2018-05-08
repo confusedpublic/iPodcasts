@@ -568,7 +568,7 @@ def add_new_episodes(podcast_list, podcast_dir, podcast_feed_dir):
         for pod_number, pod_details in pod_num.items():
             ignore_file_path = pod_details['xml'][:-4] + ".ignore"
             ignore_file = open(ignore_file_path, "w")
-            ignore_file.close
+            ignore_file.close()
             if os.path.isfile(ignore_file_path) == True:
                 logger.info("Created the .ignore file for podcast: " + pod_details['xml'][:-4])
             else:
