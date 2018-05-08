@@ -16,24 +16,10 @@ class TestPDWProcessFilename(object):
         'no_series',
         'no_episode',
         'properly_formed',
-        'two_episodes',
+        # 'two_episodes',  # TODO: Do double episodes occur?
         'three_digit_series',
         'three_digit_episode',
         'dot_separator_everything'
-    ]
-
-    names_ids = numbers_ids + [
-        'no_pod_name',
-        'upper',
-        'with_digit',
-        'include_single_dot_in_title',
-        'include_single_dot_in_title_and_numbers',
-        'include_two_dots'
-    ]
-
-    title_ids = names_ids + [
-        'no_title',
-        'multiple_words'
     ]
 
     @pytest.mark.parametrize("test_filename, expected", [
@@ -41,7 +27,7 @@ class TestPDWProcessFilename(object):
         ("E01_prod", (None, None)),
         ("S01_pod", (None, None)),
         ("thepod.S01E01.title", ("01", "01")),
-        ("thepod.SS01E21E22.title", ("00", "00")),  # TODO: Do double episodes occur?
+        # ("thepod.SS01E21E22.title", ("00", "00")),
         ("thepod.S500E01.title", ("500", "01")),
         ("thepod.S01E500.title", ("01", "500")),
         ("thepod.S01.E01.title", (None, None)),
@@ -52,12 +38,21 @@ class TestPDWProcessFilename(object):
 
         assert expected == (result_season, result_episode)
 
+    names_ids = numbers_ids + [
+        'no_pod_name',
+        'upper',
+        'with_digit',
+        'include_single_dot_in_title',
+        'include_single_dot_in_title_and_numbers',
+        'include_two_dots'
+    ]
+
     @pytest.mark.parametrize("test_filename, expected", [
         ("", None),
         ("thepod.E01_prod", "thepod"),
         ("thepod.S01_pod", "thepod"),
         ("thepod.S01E01.title", "thepod"),
-        ("thepod.SS01E21E22.title", "thepod"),
+        # ("thepod.SS01E21E22.title", "thepod"),
         ("thepod.S500E01.title", "thepod"),
         ("thepod.S01E500.title", "thepod"),
         ("thepod.S01.E01.title", None),
@@ -73,12 +68,17 @@ class TestPDWProcessFilename(object):
 
         assert expected == result_name
 
+    title_ids = names_ids + [
+        'no_title',
+        'multiple_words'
+    ]
+
     @pytest.mark.parametrize("test_filename, expected", [
         ("", None),
         ("thepod.E01.title", "title"),
         ("thepod.S01.title", "title"),
         ("thepod.S01E01.title", "title"),
-        ("thepod.SS01E21E22.title", "title"),
+        # ("thepod.SS01E21E22.title", "title"),
         ("thepod.S500E01.title", "title"),
         ("thepod.S01E500.title", "title"),
         ("thepod.S01.E01.title", None),
@@ -99,7 +99,7 @@ class TestPDWProcessFilename(object):
     all_parts_ids = [
         'no_filename',
         'properly_formed',
-        'two_episode_numbers',
+        # 'two_episode_numbers',
         'three_digit_season_number',
         'three_digit_episode_number',
         'dot_separator',
@@ -110,7 +110,7 @@ class TestPDWProcessFilename(object):
     @pytest.mark.parametrize("test_filename, expected", [
         ("", (None, None, None, None)),
         ("thepod.S01E01.title", ("thepod", "01", "01", "title")),
-        ("thepod.SS01E21E22.title", "title"),
+        # ("thepod.SS01E21E22.title", ('thepod', "00", "00", "title")),
         ("thepod.S500E01.title", ("thepod", "500", "01", "title")),
         ("thepod.S01E500.title", ("thepod", "01", "500", "title")),
         ("thepod.S01.E01.title", (None, None, None, None)),

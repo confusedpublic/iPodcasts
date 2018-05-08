@@ -76,9 +76,9 @@ class TestPDWMakePodcasts(object):
     def test_correct_podcast(self, mock_walk, tmpdir):
 
         foo = tmpdir.mkdir('foo')
-        first_mp3 = foo.join('thepod.S01E01.title.mp3')
+        first_mp3 = foo.join('thepod.S01E02.title.mp3')
         first_mp3.write('tester')
-        first_xml = foo.join('thepod.S01E01.title.xml')
+        first_xml = foo.join('thepod.S01E02.title.xml')
         first_xml.write('tester')
 
         mock_walk.return_value = [
