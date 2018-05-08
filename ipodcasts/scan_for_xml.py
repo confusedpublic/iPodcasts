@@ -101,7 +101,7 @@ class PodcastDirectoryWalker(object):
             r'^(?P<pod_name>[a-zA-Z0-9_]+)\.S(?P<season>[0-9]{2,3})E(?P<episode>[0-9]{2,3})\.'
             r'(?P<title>[a-zA-Z0-9_]+)$')
         podcast_match = re.compile(r'^(?P<pod_name>[a-zA-Z_]+(\.[a-zA-Z0-9]+?)?)'
-                                   r'(\.(?P<title>[a-zA-Z0-9_]+))$')
+                                   r'(\.(?P<title>(?!S[0-9]{2}E[0-9]{2})[a-zA-Z0-9_]+))$')
 
         episode_details_numbers = podcast_numbers_match.search(filename)
         episode_details = podcast_match.search(filename)
@@ -125,11 +125,10 @@ class PodcastDirectoryWalker(object):
 
     def _podcast_walk(self):
         """ Walks the podcast dir
-        :param directory:
         :return:
         """
 
-        podcast_files = {}  # defaultdict(dict)
+        podcast_files = {}
         ignored = []
 
         for this_dir, subdirs_found, files_found in os.walk(self.directory):
