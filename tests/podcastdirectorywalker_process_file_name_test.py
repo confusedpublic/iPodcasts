@@ -3,7 +3,7 @@
 import pytest
 import logging
 
-from ipodcasts.scan_for_xml import PodcastDirectoryWalker
+from ipodcasts.find_new_podcasts import PodcastDirectoryWalker
 
 
 logging.basicConfig(level=logging.DEBUG)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
 
@@ -8,18 +9,11 @@ import logging
 import logging.handlers
 import threading
 
-# Import scheduler.py to run the scheduling of the scan
 import ipodcasts.scheduler as SCHEDULER
-# import generate_podcast_list to do all the fancy auto-generating
-import ipodcasts.generate_podcast_list as GENERATE
-# Import the new XML files
-from ipodcasts.scan_for_xml import PodcastDirectoryWalker
+from ipodcasts.podcast_subscription_managers import PodcastSubscriptionManager
+from ipodcasts.find_new_podcasts import PodcastDirectoryWalker
 
-##############
-##############
-# IMPORTANT
-# TO DO
-#
+
 # Need to set directory of settings.conf to be an absolute path
 # Caused no ends of problems when trying to run as daemon
 CONFIG_FILE = "/ipodcasts.service/settings.conf"
@@ -49,26 +43,19 @@ if not settings['podcast_dir']:
 if not os.path.isdir(settings['podcast_dir']):
     logger.error("The podcast directory set in the config file does not exist. Please set this to an existing directory.")
 
-# Make sure the podcast directory is clean; add a / if needed:
-if json_data[0]['podcast_dir'].endswith("/"):
-    podcast_dir = json_data[0]['podcast_dir']
-else:
-    podcast_dir = json_data[0]['podcast_dir'] + "/"
-  
-# Make sure the podcast feed directory is clean; add a / if needed:
-if json_data[0]['podcast_feed_dir'].endswith("/"):
-    podcast_feed_dir = json_data[0]['podcast_feed_dir']
-else:
-    podcast_feed_dir = json_data[0]['podcast_feed_dir'] + "/"
+podcast_dir = json_data[0]['podcast_dir']
+podcast_feed_dir = json_data[0]['podcast_feed_dir']
+webpage_path = json_data[0]['webpage_path']
 
 # Set the scan interval, convert from minutes to a timedelta:
 scan_interval = datetime.timedelta(minutes=settings['interval'])
 
-class iPodcasts():
-#-------------------------------------------------------------------------#
-# This class runs the scheduled scan for the podcasts. It is what is
-# initialised by the Scheduler class at the time period set in the settings
-# file.
+
+class iPodcasts(object):
+    """ This class runs the scheduled scan for the podcasts. It is what is
+        initialised by the Scheduler class at the time period set in the settings
+        file.
+    """
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -84,20 +71,17 @@ class iPodcasts():
         logger.info("Initialising iPodcast scan")
 
         podcast_walker = PodcastDirectoryWalker(podcast_dir)
+        podcasts = podcast_walker.get_podcasts()
 
-        for podcast in podcast_walker.make_podcasts():
-
-            # And now generate the Podcast feeds
-            GENERATE.add_new_episodes(podcast, podcast_dir, podcast_feed_dir)
+        if podcasts:
+            podcast_manager = PodcastSubscriptionManager(podcasts, podcast_feed_dir, webpage_path)
+            podcast_manager.add_new_episodes()
             logger.info("Scan complete")
-
         else:
             logger.info("No new podcasts found")
         
         self.amActive = False
 
-# /end iPodcasts()
-#-------------------------------------------------------------------------#
 
 # Construct the podcast scheduler
 PodcastScheduler = SCHEDULER.Scheduler(iPodcasts(), cycleTime=scan_interval, threadName="PodcastScheduler")

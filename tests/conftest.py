@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from ipodcasts import Podcast
+from ipodcasts.episode import PodcastEpisode
 
 def pytest_assertrepr_compare(op, left, right):
 
-    if isinstance(left, Podcast) and isinstance(right, Podcast) and op == "==":
+    if isinstance(left, PodcastEpisode) and isinstance(right, PodcastEpisode) and op == "==":
         
         if left.__dict__['_title'] == right.__dict__['_title']:
             title_string = '   title: %s == %s' % (left.__dict__['_title'], right.__dict__['_title'])
@@ -35,7 +35,7 @@ def pytest_assertrepr_compare(op, left, right):
         else:
             xml_path_string = '   xml_path: %s != %s' % (left.__dict__['_xml_path'], right.__dict__['_xml_path'])
 
-        return ['Comparing Podcast instances:',
+        return ['Comparing Podcast Episode instances:',
                 title_string,
                 series_string,
                 season_number_string,

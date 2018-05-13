@@ -2,7 +2,7 @@
 
 import pytest
 
-from ipodcasts.scan_for_xml import PodcastDirectoryWalker
+from ipodcasts.find_new_podcasts import PodcastDirectoryWalker
 
 
 class TestPDWAreIgnoring(object):

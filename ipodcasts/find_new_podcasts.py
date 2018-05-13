@@ -15,9 +15,9 @@ import os
 import logging
 import re
 
-from collections import defaultdict
+from ipodcasts.podcast import Podcast
+from ipodcasts.episode import PodcastEpisode
 
-from ipodcasts import Podcast
 
 # Set the log
 logger = logging.getLogger( __name__)
@@ -175,7 +175,7 @@ class PodcastDirectoryWalker(object):
 
         for p_file, info in self.podcast_files.items():
 
-            new_podcast = Podcast()
+            new_podcast = PodcastEpisode()
             new_podcast.title = info['title']
             new_podcast.file_path = info['path']
             new_podcast.xml_path = info['path'].replace('.mp3', '.xml')
@@ -184,3 +184,21 @@ class PodcastDirectoryWalker(object):
             new_podcast.episode_number = info['ep_number']
 
             yield new_podcast
+
+    def get_podcasts(self):
+        """ Sort podcast episodes into Podcast objects """
+
+        podcast_list = []
+        feed_xml_path = ''  # FIXME: Actually make this variable!
+
+        for podcast_episode in self.make_podcasts():
+
+            if not any(episode.series == podcast_episode.series for episode in podcast_list):
+                # Not made a podcast for this yet
+                podcast = Podcast(podcast_episode.series, feed_xml_path)
+            else:
+                [podcast] = [pod for pod in podcast_list if pod.series == podcast_episode.series]
+
+            podcast.episodes.append(podcast_episode)
+
+        return podcast_list

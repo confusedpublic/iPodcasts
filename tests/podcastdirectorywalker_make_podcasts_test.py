@@ -4,8 +4,8 @@ import mock
 import logging
 import os
 
-from ipodcasts import Podcast
-from ipodcasts.scan_for_xml import PodcastDirectoryWalker
+from ipodcasts.episode import PodcastEpisode
+from ipodcasts.find_new_podcasts import PodcastDirectoryWalker
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -72,9 +72,11 @@ class TestPDWMakePodcasts(object):
 
         assert list(pdw.make_podcasts()) == []
 
+    @mock.patch('ipodcasts.episode.PodcastEpisode.duration')
     @mock.patch('os.walk')
-    def test_correct_podcast(self, mock_walk, tmpdir):
+    def test_correct_podcast(self, mock_walk, mock_duration, tmpdir):
 
+        mock_duration.return_value = "00:00:00"
         foo = tmpdir.mkdir('foo')
         first_mp3 = foo.join('thepod.S01E02.title.mp3')
         first_mp3.write('tester')
@@ -89,7 +91,7 @@ class TestPDWMakePodcasts(object):
              )
         ]
 
-        expected_podcast = Podcast()
+        expected_podcast = PodcastEpisode()
         expected_podcast.title = 'title'
         expected_podcast.file_path = str(first_mp3)
         expected_podcast.xml_path = str(first_xml)

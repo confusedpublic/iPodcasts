@@ -1,10 +1,9 @@
 import datetime
 import time
 import threading
-import traceback
 import logging
 
-logger = logging.getLogger("iPodcasts." + __name__)
+logger = logging.getLogger( __name__)
 
 class Scheduler(threading.Thread):
     def __init__(self, action, cycleTime=datetime.timedelta(minutes=10),
